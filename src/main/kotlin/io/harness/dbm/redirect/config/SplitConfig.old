@@ -1,0 +1,47 @@
+package io.harness.dbm.redirect.config
+
+import io.split.client.SplitClient
+import io.split.client.SplitClientConfig
+import io.split.client.SplitFactoryBuilder
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+
+@Configuration
+class SplitConfig {
+
+    @Bean
+    fun splitClient(): SplitClient {
+        println("🔧 [SplitConfig] Creating SplitClient bean...")
+
+        val sdkKey = System.getenv("SPLIT_SDK_KEY")
+        if (sdkKey.isNullOrBlank()) {
+            println("❌ [SplitConfig] SPLIT_SDK_KEY is not set or empty")
+            throw IllegalStateException("Missing SPLIT_SDK_KEY")
+        }
+
+        println("🔧 [SplitConfig] Using SDK key: ${if (sdkKey.length > 8) sdkKey.take(8) + "..." else sdkKey}")
+
+        val config = SplitClientConfig.builder()
+            .setBlockUntilReadyTimeout(5000)
+            .enableDebug()
+            .build()
+
+        try {
+            val factory = SplitFactoryBuilder.build(sdkKey, config)
+            println("✅ [SplitConfig] Factory created")
+
+            val client = factory.client()
+            println("⏳ [SplitConfig] Waiting for client to be ready...")
+
+            client.blockUntilReady()
+            println("✅ [SplitConfig] Client is ready")
+
+            return client
+
+        } catch (e: Exception) {
+            println("❌ [SplitConfig] Exception during client setup: ${e.message}")
+            e.printStackTrace()
+            throw IllegalStateException("Split client failed to initialize", e)
+        }
+    }
+}
